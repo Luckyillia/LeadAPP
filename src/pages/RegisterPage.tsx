@@ -38,7 +38,6 @@ export function RegisterPage() {
 
     setLoading(true);
     try {
-      // Rejestracja przez Supabase Auth
       const { data, error: signUpErr } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
@@ -50,22 +49,28 @@ export function RegisterPage() {
       if (signUpErr) throw signUpErr;
       if (!data.user) throw new Error('Błąd rejestracji.');
 
-      // Upsert profilu (może już istnieć przez trigger)
-      const { error: profileErr } = await supabase.from('profiles').upsert({
-        id: data.user.id,
-        email: form.email,
-        full_name: form.fullName,
-        role: form.role,
-        is_active: true,
-      });
+      if (data.user.identities && data.user.identities.length === 0) {
+        throw new Error('Ten adres email jest już zarejestrowany.');
+      }
 
-      if (profileErr) throw profileErr;
+      if (data.session) {
+        const { error: profileErr } = await supabase.from('profiles').upsert({
+          id: data.user.id,
+          email: form.email,
+          full_name: form.fullName,
+          role: form.role,
+          is_active: true,
+        });
+        if (profileErr) throw profileErr;
+      }
 
       setSuccess(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Błąd rejestracji';
       const friendly = msg.includes('already registered')
         ? 'Ten adres email jest już zarejestrowany.'
+        : msg.includes('rate limit')
+        ? 'Zbyt wiele prób rejestracji. Spróbuj ponownie za godzinę.'
         : msg;
       setError(friendly);
     } finally {
