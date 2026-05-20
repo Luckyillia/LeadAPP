@@ -8,10 +8,10 @@ interface Props {
   buyerId: string;
   leadCreatedAt: string;
   leadName: string;
-  onSuccess: () => void;
+  onSuccess: (reason: string) => Promise<void>;
 }
 
-export function RejectionModal({ leadId, buyerId, leadCreatedAt, leadName, onSuccess }: Props) {
+export function RejectionModal({ leadCreatedAt, leadName, onSuccess }: Props) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,20 +26,15 @@ export function RejectionModal({ leadId, buyerId, leadCreatedAt, leadName, onSuc
     if (!reason.trim()) { setError('Podaj przyczynę reklamacji.'); return; }
     setLoading(true);
     setError('');
-
-    // Simulate POST /functions/v1/claim-lead-rejection
-    await new Promise(r => setTimeout(r, 700));
-
-    if (expired) {
-      setError('Czas na reklamację minął (48h od dostawy).');
+    try {
+      await onSuccess(reason);
+      setOpen(false);
+      setReason('');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Błąd zgłoszenia reklamacji.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setLoading(false);
-    setOpen(false);
-    setReason('');
-    onSuccess();
   };
 
   return (
@@ -62,14 +57,10 @@ export function RejectionModal({ leadId, buyerId, leadCreatedAt, leadName, onSuc
             expired ? 'bg-red-50 text-red-700' : remaining < 12 ? 'bg-amber-50 text-amber-700' : 'bg-muted text-muted-foreground'
           }`}>
             <Clock className="w-4 h-4 shrink-0" />
-            {expired
-              ? 'Termin reklamacji upłynął.'
-              : `Pozostało ${remaining.toFixed(1)}h z limitu 48h.`}
+            {expired ? 'Termin reklamacji upłynął.' : `Pozostało ${remaining.toFixed(1)}h z limitu 48h.`}
           </div>
 
-          <p className="text-sm">
-            Reklamacja dla: <strong>{leadName}</strong>
-          </p>
+          <p className="text-sm">Reklamacja dla: <strong>{leadName}</strong></p>
 
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="space-y-1">
@@ -78,7 +69,7 @@ export function RejectionModal({ leadId, buyerId, leadCreatedAt, leadName, onSuc
                 rows={4}
                 placeholder="Błędny numer, brak zgody RODO, nieprawidłowe dane firmy..."
                 value={reason}
-                onChange={e => setReason(e.target.value)}
+                onChange={(e) => setReason(e.target.value)}
                 disabled={expired}
               />
             </div>

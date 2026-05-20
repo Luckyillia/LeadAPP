@@ -13,11 +13,7 @@ export function StatusBadge({ status }: { status: LeadStatus }) {
 }
 
 export function RoleBadge({ role }: { role: UserRole }) {
-  return (
-    <span className={cn('role-badge', `role-${role}`)}>
-      {ROLE_LABELS[role]}
-    </span>
-  );
+  return <span className={cn('role-badge', `role-${role}`)}>{ROLE_LABELS[role]}</span>;
 }
 
 export function SourceBadge({ source }: { source: LeadSource }) {
@@ -26,11 +22,7 @@ export function SourceBadge({ source }: { source: LeadSource }) {
     call_center: 'bg-blue-100 text-blue-700',
     sales_direct: 'bg-emerald-100 text-emerald-700',
   };
-  return (
-    <span className={cn('status-badge', colors[source])}>
-      {SOURCE_LABELS[source]}
-    </span>
-  );
+  return <span className={cn('status-badge', colors[source])}>{SOURCE_LABELS[source]}</span>;
 }
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}
@@ -39,7 +31,7 @@ export function Card({ className, ...props }: CardProps) {
 }
 
 export function PageHeader({ title, subtitle, children }: {
-  title: string; subtitle?: string; children?: React.ReactNode
+  title: string; subtitle?: string; children?: React.ReactNode;
 }) {
   return (
     <div className="flex items-start justify-between mb-6">
@@ -53,7 +45,7 @@ export function PageHeader({ title, subtitle, children }: {
 }
 
 export function StatCard({ label, value, sub, accent }: {
-  label: string; value: string | number; sub?: string; accent?: string
+  label: string; value: string | number; sub?: string; accent?: string;
 }) {
   return (
     <div className="card-stat">
@@ -86,11 +78,7 @@ export function Button({
     ghost: 'hover:bg-secondary text-muted-foreground hover:text-foreground',
     outline: 'border border-border bg-white hover:bg-secondary text-foreground',
   };
-  const sizes = {
-    sm: 'text-xs px-2.5 py-1.5',
-    md: 'text-sm px-4 py-2',
-    lg: 'text-sm px-5 py-2.5',
-  };
+  const sizes = { sm: 'text-xs px-2.5 py-1.5', md: 'text-sm px-4 py-2', lg: 'text-sm px-5 py-2.5' };
   return (
     <button className={cn(base, variants[variant], sizes[size], className)} {...props}>
       {children}
@@ -142,14 +130,10 @@ export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<H
 }
 
 export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
-  return (
-    <label className={cn('text-sm font-medium text-foreground', className)} {...props} />
-  );
+  return <label className={cn('text-sm font-medium text-foreground', className)} {...props} />;
 }
 
-export function Modal({
-  open, onClose, title, children,
-}: {
+export function Modal({ open, onClose, title, children }: {
   open: boolean; onClose: () => void; title: string; children: React.ReactNode;
 }) {
   if (!open) return null;

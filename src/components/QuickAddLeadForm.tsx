@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { Button, Input, Textarea, Label, Modal } from '@/components/ui';
-import { Plus, CheckCircle } from 'lucide-react';
+import { Button, Input, Textarea, Label, Modal, Select } from '@/components/ui';
+import { useAddLead } from '@/hooks/useLeads';
+import { useAuthStore } from '@/store/useAuthStore';
+import { Plus, CheckCircle, Loader2 } from 'lucide-react';
+import type { LeadSource } from '@/types';
 
 interface FormData {
   firstName: string;
@@ -9,21 +12,24 @@ interface FormData {
   phone: string;
   companyName: string;
   consentText: string;
+  source: LeadSource;
 }
 
 const EMPTY: FormData = {
   firstName: '', lastName: '', email: '', phone: '', companyName: '',
   consentText: 'Wyrażam zgodę na kontakt w celach handlowych i przetwarzanie moich danych osobowych.',
+  source: 'web',
 };
 
 export function QuickAddLeadForm({ onAdded }: { onAdded?: () => void }) {
+  const { user } = useAuthStore();
+  const addLead = useAddLead();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormData>(EMPTY);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [errors, setErrors] = useState<Partial<FormData>>({});
+  const [success, setSuccess] = useState(false);
 
-  const validate = () => {
+  const validate = (): Partial<FormData> => {
     const e: Partial<FormData> = {};
     if (form.firstName.length < 2) e.firstName = 'Min. 2 znaki';
     if (form.lastName.length < 2) e.lastName = 'Min. 2 znaki';
@@ -39,24 +45,34 @@ export function QuickAddLeadForm({ onAdded }: { onAdded?: () => void }) {
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    setLoading(true);
-    // Simulate API call to POST /functions/v1/intake-lead
-    await new Promise(r => setTimeout(r, 800));
-    setLoading(false);
-    setSuccess(true);
-    setTimeout(() => {
-      setSuccess(false);
-      setOpen(false);
-      setForm(EMPTY);
-      onAdded?.();
-    }, 1500);
+    try {
+      await addLead.mutateAsync({
+        ...form,
+        assignedTo: user?.role === 'sales_direct' ? user.id : null,
+      });
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        setOpen(false);
+        setForm(EMPTY);
+        onAdded?.();
+      }, 1500);
+    } catch (err: unknown) {
+      setErrors({ email: err instanceof Error ? err.message : 'Błąd zapisu' });
+    }
   };
 
   const field = (key: keyof FormData) => ({
     value: form[key],
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setForm(prev => ({ ...prev, [key]: e.target.value })),
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm((prev) => ({ ...prev, [key]: e.target.value })),
   });
+
+  // Handlowiec zawsze dodaje jako sales_direct
+  const defaultSource: LeadSource = user?.role === 'sales_direct' ? 'sales_direct' : 'web';
+  if (form.source !== defaultSource && user?.role === 'sales_direct') {
+    setForm((f) => ({ ...f, source: 'sales_direct' }));
+  }
 
   return (
     <>
@@ -64,50 +80,64 @@ export function QuickAddLeadForm({ onAdded }: { onAdded?: () => void }) {
         <Plus className="w-4 h-4" /> Dodaj Lead
       </Button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Szybkie Dodanie Kontaktu">
+      <Modal open={open} onClose={() => { setOpen(false); setForm(EMPTY); }} title="Szybkie Dodanie Kontaktu">
         {success ? (
           <div className="flex flex-col items-center gap-3 py-6 text-emerald-600">
             <CheckCircle className="w-12 h-12" />
             <p className="font-semibold text-lg">Lead zapisany!</p>
-            <p className="text-sm text-muted-foreground">Kontakt przypisany do kolejki CC.</p>
+            <p className="text-sm text-muted-foreground">
+              {addLead.data?.isDuplicate
+                ? '⚠ Wykryto duplikat — przypisano do aktualnego opiekuna.'
+                : 'Kontakt przypisany do kolejki.'}
+            </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="fn">Imię</Label>
-                <Input id="fn" placeholder="Jan" {...field('firstName')} />
+                <Label>Imię</Label>
+                <Input placeholder="Jan" {...field('firstName')} />
                 {errors.firstName && <p className="text-xs text-destructive">{errors.firstName}</p>}
               </div>
               <div className="space-y-1">
-                <Label htmlFor="ln">Nazwisko</Label>
-                <Input id="ln" placeholder="Kowalski" {...field('lastName')} />
+                <Label>Nazwisko</Label>
+                <Input placeholder="Kowalski" {...field('lastName')} />
                 {errors.lastName && <p className="text-xs text-destructive">{errors.lastName}</p>}
               </div>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="jan@firma.pl" {...field('email')} />
+              <Label>Email</Label>
+              <Input type="email" placeholder="jan@firma.pl" {...field('email')} />
               {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="phone">Telefon</Label>
-              <Input id="phone" placeholder="+48 600 000 000" {...field('phone')} />
+              <Label>Telefon</Label>
+              <Input placeholder="+48 600 000 000" {...field('phone')} />
               {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="company">Firma</Label>
-              <Input id="company" placeholder="Nazwa Sp. z o.o." {...field('companyName')} />
+              <Label>Firma</Label>
+              <Input placeholder="Nazwa Sp. z o.o." {...field('companyName')} />
               {errors.companyName && <p className="text-xs text-destructive">{errors.companyName}</p>}
             </div>
+            {user?.role !== 'sales_direct' && (
+              <div className="space-y-1">
+                <Label>Źródło</Label>
+                <Select {...field('source')}>
+                  <option value="web">Formularz WWW</option>
+                  <option value="call_center">Call Center</option>
+                  <option value="sales_direct">Sprzedaż Bezpośrednia</option>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1">
-              <Label htmlFor="consent">Treść zgody marketingowej</Label>
-              <Textarea id="consent" rows={3} {...field('consentText')} />
+              <Label>Treść zgody marketingowej</Label>
+              <Textarea rows={3} {...field('consentText')} />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Anuluj</Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Zapisuję...' : 'Zapisz Lead'}
+              <Button type="button" variant="secondary" onClick={() => { setOpen(false); setForm(EMPTY); }}>Anuluj</Button>
+              <Button type="submit" disabled={addLead.isPending}>
+                {addLead.isPending ? <><Loader2 className="w-4 h-4 animate-spin" /> Zapisuję...</> : 'Zapisz Lead'}
               </Button>
             </div>
           </form>

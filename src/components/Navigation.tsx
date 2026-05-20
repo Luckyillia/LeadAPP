@@ -2,14 +2,12 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/utils';
-import {
-  LayoutDashboard, Phone, Users, ShoppingBag,
-  LogOut, ChevronDown, Zap,
-} from 'lucide-react';
+import { LayoutDashboard, Phone, Users, ShoppingBag, LogOut, Zap, Home } from 'lucide-react';
 import type { UserRole } from '@/types';
 import { ROLE_LABELS } from '@/types';
 
 const NAV_ITEMS: { role: UserRole[]; path: string; label: string; icon: React.ElementType }[] = [
+  { role: ['admin', 'agent_cc', 'sales_direct', 'buyer'], path: '/', label: 'Strona główna', icon: Home },
   { role: ['admin'], path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { role: ['admin', 'agent_cc'], path: '/cc', label: 'CRM Call Center', icon: Phone },
   { role: ['admin', 'sales_direct'], path: '/handlowiec', label: 'CRM Handlowiec', icon: Users },
@@ -24,7 +22,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
 };
 
 export function Navigation() {
-  const { user, login, logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const location = useLocation();
 
   if (!user) return null;
@@ -48,7 +46,9 @@ export function Navigation() {
       <nav className="flex-1 p-3 space-y-1">
         {visibleItems.map((item) => {
           const Icon = item.icon;
-          const active = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+          const active = item.path === '/'
+            ? location.pathname === '/'
+            : location.pathname.startsWith(item.path);
           return (
             <Link
               key={item.path}
@@ -62,39 +62,25 @@ export function Navigation() {
         })}
       </nav>
 
-      {/* Demo role switcher */}
-      <div className="p-3 border-t border-border space-y-2">
-        <p className="text-xs text-muted-foreground px-2 font-mono">DEMO – zmień rolę:</p>
-        <div className="grid grid-cols-2 gap-1">
-          {(['admin', 'agent_cc', 'sales_direct', 'buyer'] as UserRole[]).map((role) => (
-            <button
-              key={role}
-              onClick={() => login(role)}
-              className={cn(
-                'text-xs px-2 py-1.5 rounded font-mono font-medium transition-all',
-                user.role === role
-                  ? ROLE_COLORS[role]
-                  : 'bg-secondary text-muted-foreground hover:bg-muted'
-              )}
-            >
-              {role === 'agent_cc' ? 'CC' : role === 'sales_direct' ? 'Sales' : role === 'admin' ? 'Admin' : 'Buyer'}
-            </button>
-          ))}
-        </div>
-
-        {/* User info */}
-        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted mt-1">
-          <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
-            {user.fullName.split(' ').map(n => n[0]).join('')}
+      {/* User info + logout */}
+      <div className="p-3 border-t border-border">
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted mb-2">
+          <div className={cn('w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold', ROLE_COLORS[user.role])}>
+            {user.fullName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium truncate">{user.fullName}</p>
             <p className="text-xs text-muted-foreground">{ROLE_LABELS[user.role]}</p>
           </div>
-          <button onClick={logout} className="text-muted-foreground hover:text-destructive transition-colors">
+          <button
+            onClick={() => logout()}
+            className="text-muted-foreground hover:text-destructive transition-colors"
+            title="Wyloguj się"
+          >
             <LogOut className="w-3.5 h-3.5" />
           </button>
         </div>
+        <p className="text-xs text-muted-foreground font-mono text-center opacity-50">{user.email}</p>
       </div>
     </aside>
   );
