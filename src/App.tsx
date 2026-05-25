@@ -6,19 +6,14 @@ import { Navigation } from '@/components/Navigation';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { HomePage } from '@/pages/HomePage';
-import { DashboardAdmin } from '@/pages/DashboardAdmin';
-import { CRM_CallCenter } from '@/pages/CRM_CallCenter';
-import { CRM_Handlowiec } from '@/pages/CRM_Handlowiec';
-import { PortalBuyer } from '@/pages/PortalBuyer';
+import { AdminLayout } from '@/pages/admin/AdminLayout';
+import { CCLayout } from '@/pages/cc/CCLayout';
+import { HandlowiecLayout } from '@/pages/handlowiec/HandlowiecLayout';
+import { BuyerLayout } from '@/pages/buyer/BuyerLayout';
 import { Loader2, Zap } from 'lucide-react';
 
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      staleTime: 30_000,
-    },
-  },
+  defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
 
 function AppLayout() {
@@ -31,10 +26,22 @@ function AppLayout() {
       <main className="flex-1 overflow-auto">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/admin" element={user.role === 'admin' ? <DashboardAdmin /> : <Navigate to="/" replace />} />
-          <Route path="/cc" element={['admin', 'agent_cc'].includes(user.role) ? <CRM_CallCenter /> : <Navigate to="/" replace />} />
-          <Route path="/handlowiec" element={['admin', 'sales_direct'].includes(user.role) ? <CRM_Handlowiec /> : <Navigate to="/" replace />} />
-          <Route path="/buyer" element={['admin', 'buyer'].includes(user.role) ? <PortalBuyer /> : <Navigate to="/" replace />} />
+          <Route
+            path="/admin/*"
+            element={user.role === 'admin' ? <AdminLayout /> : <Navigate to="/" replace />}
+          />
+          <Route
+            path="/cc/*"
+            element={['admin', 'agent_cc'].includes(user.role) ? <CCLayout /> : <Navigate to="/" replace />}
+          />
+          <Route
+            path="/handlowiec/*"
+            element={['admin', 'sales_direct'].includes(user.role) ? <HandlowiecLayout /> : <Navigate to="/" replace />}
+          />
+          <Route
+            path="/buyer/*"
+            element={user.role === 'buyer' ? <BuyerLayout /> : <Navigate to="/" replace />}
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -62,10 +69,7 @@ function AuthGate() {
 
   useEffect(() => {
     let cleanup: (() => void) | undefined;
-    init().then((unsub) => {
-      cleanup = unsub;
-      setInitialized(true);
-    });
+    init().then(unsub => { cleanup = unsub; setInitialized(true); });
     return () => cleanup?.();
   }, [init]);
 
